@@ -1,8 +1,0 @@
-<resources>
-    <string name="app_name">EmojiGame</string>
-
-    <string name="welcomeText">Welcome to EmojiGame!</string>
-    <string name="chooseCategory">Choose a category!</string>
-    <string name="submitText">Submit</string>
-    <string name="guessHint">Guess…</string>
-</resources>
