@@ -5,12 +5,12 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.emojigame.APIs.API
+import com.example.emojigame.Database.AppDatabase
+import com.example.emojigame.Database.Repository
 import com.example.emojigame.PuzzlePage.EmojiPuzzleActivity
 import com.example.emojigame.R
+import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), OnCategorySelected {
 
@@ -19,22 +19,35 @@ class MainActivity : AppCompatActivity(), OnCategorySelected {
     }
 
     private val categoryAdapter: CategoryAdapter = CategoryAdapter()
+    private lateinit var viewModel: MainViewModel
+
+    private val compositeDisposable = CompositeDisposable()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setupRecyclerView()
 
+        val database = AppDatabase.getInstance(this@MainActivity)
+        viewModel = MainViewModelFactory(
+            Repository(API, database))
+            .create(MainViewModel::class.java)
+
         loadingProgressbar.show()
         loadCategories()
     }
 
+    override fun onStop() {
+        super.onStop()
+        compositeDisposable.dispose()
+    }
+
     private fun loadCategories() {
-        GlobalScope.launch(Dispatchers.Main) {
-            loadingProgressbar.hide()
-            val categories = API.getCategories()
-            categoryAdapter.submitList(categories)
-        }
+        compositeDisposable.add(
+            viewModel.categories.subscribe {
+                loadingProgressbar.hide()
+                categoryAdapter.submitList(it)
+        })
     }
 
     private fun setupRecyclerView() {

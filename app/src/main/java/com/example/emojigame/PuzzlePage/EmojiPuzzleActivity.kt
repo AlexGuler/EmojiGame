@@ -1,20 +1,25 @@
 package com.example.emojigame.PuzzlePage
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.Toast
-import androidx.recyclerview.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.PagerSnapHelper
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SnapHelper
 import com.example.emojigame.APIs.API
+import com.example.emojigame.Database.AppDatabase
+import com.example.emojigame.Database.Repository
 import com.example.emojigame.MainPage.MainActivity
 import com.example.emojigame.R
+import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_emoji_puzzle.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 
 class EmojiPuzzleActivity : AppCompatActivity() {
 
     private val emojiPuzzleAdapter: EmojiPuzzleAdapter = EmojiPuzzleAdapter()
+
+    private val compositeDisposable = CompositeDisposable()
+    private lateinit var viewModel: PuzzlePageViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,26 +27,28 @@ class EmojiPuzzleActivity : AppCompatActivity() {
         val category = intent.getStringExtra(MainActivity.categoryKey)
         categoryTitle.text = category
 
+        val database = AppDatabase.getInstance(this@EmojiPuzzleActivity)
+        viewModel = PuzzlePageViewModelFactory(
+            category!!,
+            Repository(API, database))
+            .create(PuzzlePageViewModel::class.java)
+
         setupPuzzlesRecyclerView()
         loadingProgressbar.show()
-        loadPuzzles(category)
+        loadPuzzles()
     }
 
-    private fun loadPuzzles(category: String?) {
-        if (category != null) {
-            GlobalScope.launch(Dispatchers.Main) {
+    override fun onStop() {
+        super.onStop()
+        compositeDisposable.dispose()
+    }
+
+    private fun loadPuzzles() {
+        compositeDisposable.add(
+            viewModel.puzzles.subscribe {
                 loadingProgressbar.hide()
-                val puzzles = API.getPuzzlesOfCategory(category)
-                emojiPuzzleAdapter.submitList(puzzles)
-            }
-        } else {
-            loadingProgressbar.hide()
-            Toast.makeText(
-                this@EmojiPuzzleActivity,
-                "Error occurred could not retrieve puzzles, please try again later.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
+                emojiPuzzleAdapter.submitList(it)
+            })
     }
 
     private fun setupPuzzlesRecyclerView() {
